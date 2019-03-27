@@ -5,6 +5,29 @@
 
 #include "kdtree.h"
 
+#define CLOCK_MONOTONIC 1
+#if (defined (__WIN32__) || defined (_WIN32)) && !defined (__MINGW32__)
+#include <conio.h>
+#include <windows.h>
+#pragma comment(lib, "winmm.lib")
+#pragma warning(disable : 4996)
+#define srandom srand
+#endif
+#if (defined (__linux__) || defined(__CYGWIN__) || defined(__APPLE__))
+#include <sys/time.h>
+#endif
+#if (defined (__linux__) || defined(__CYGWIN__) || defined(__APPLE__))
+// Linux porting section: implement timeGetTime() by gettimeofday(),
+#ifndef DWORD
+#define DWORD uint32_t
+#endif
+DWORD timeGetTime() {
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
+	DWORD ret = static_cast<DWORD>(tv.tv_usec / 1000 + tv.tv_sec * 1000);
+	return ret;
+}
+#endif
 #define N 1024 * 1024
 
 static inline double rd(void)
@@ -32,7 +55,7 @@ static void kdtree_knn_dump(struct kdtree *tree)
 int main(void)
 {
         int i, j, dim = 2;
-        struct timespec start, end;
+        DWORD start, end;
         struct kdtree *tree = kdtree_init(dim);
         if (tree == NULL) {
                 exit(-1);
@@ -95,7 +118,7 @@ int main(void)
         /* Insert test */
         printf("Add %d nodes...\n", N);
         srandom(time(NULL));
-        clock_gettime(CLOCK_MONOTONIC, &start);
+		start = timeGetTime();
         for (i = 0; i < N; i++) {
                 double *sample = malloc(dim * sizeof(double));
                 for (j = 0; j < dim; j++) {
@@ -103,15 +126,15 @@ int main(void)
                 }
                 kdtree_insert(tree, sample);
         }
-        clock_gettime(CLOCK_MONOTONIC, &end);
-        printf("time span: %ldms\n", (end.tv_sec - start.tv_sec)*1000 + (end.tv_nsec - start.tv_nsec)/1000000);
+        end = timeGetTime();
+        printf("time span: %ldms\n", end - start);
 
         /* Build test */
         printf("Build KD tree...\n");
-        clock_gettime(CLOCK_MONOTONIC, &start);
+		start = timeGetTime();
         kdtree_rebuild(tree);
-        clock_gettime(CLOCK_MONOTONIC, &end);
-        printf("time span: %ldms\n", (end.tv_sec - start.tv_sec)*1000 + (end.tv_nsec - start.tv_nsec)/1000000);
+		end = timeGetTime();
+        printf("time span: %ldms\n", end - start);
 
         /* Search test */
         k = 20;
@@ -122,10 +145,10 @@ int main(void)
         }
         printf("Search KD tree...\n");
         srandom(time(NULL));
-        clock_gettime(CLOCK_MONOTONIC, &start);
+		start = timeGetTime();
         kdtree_knn_search(tree, t, k);
-        clock_gettime(CLOCK_MONOTONIC, &end);
-        printf("time span: %ldms\n", (end.tv_sec - start.tv_sec)*1000 + (end.tv_nsec - start.tv_nsec)/1000000);
+		end = timeGetTime();
+        printf("time span: %ldms\n", end - start);
         printf("%d nearest neighbors of sample(", k);
         for (i = 0; i < dim; i++) {
                 if (i == dim - 1) {
@@ -139,10 +162,10 @@ int main(void)
         /* Destroy test */
         printf("Destroy KD tree...\n");
         srandom(time(NULL));
-        clock_gettime(CLOCK_MONOTONIC, &start);
+		start = timeGetTime();
         kdtree_destroy(tree);
-        clock_gettime(CLOCK_MONOTONIC, &end);
-        printf("time span: %ldms\n", (end.tv_sec - start.tv_sec)*1000 + (end.tv_nsec - start.tv_nsec)/1000000);
+		end = timeGetTime();
+        printf("time span: %ldms\n", end - start);
 
         return 0;
 }
